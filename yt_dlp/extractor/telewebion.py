@@ -61,7 +61,7 @@ class TelewebionIE(InfoExtractor):
 
     def _call_graphql_api(
         self, operation, video_id, query,
-        variables: dict[str, tuple[str, str]] | None = None,
+        variables=None,
         note='Downloading GraphQL JSON metadata',
     ):
         parameters = ''

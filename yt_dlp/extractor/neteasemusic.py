@@ -80,20 +80,26 @@ class NetEaseMusicBaseIE(InfoExtractor):
             if not details:
                 continue
             bitrate = int_or_none(details.get('bitrate')) or 999000
-            for song in traverse_obj(self._call_player_api(song_id, bitrate), ('data', lambda _, v: url_or_none(v['url']))):
-                song_url = song['url']
+            # Get song entries as mappings so we can extract additional metadata
+            for song in traverse_obj(self._call_player_api(song_id, bitrate), ('data', {dict})):
+                song_url = url_or_none(song.get('url') if isinstance(song, dict) else song)
+                if not song_url:
+                    # try to capture error code if available
+                    if err == 0 and isinstance(song, dict):
+                        err = traverse_obj(song, ('code', {int})) or 0
+                    continue
                 if self._is_valid_url(song_url, info['id'], 'song'):
                     formats.append({
                         'url': song_url,
                         'format_id': song_format,
                         'asr': traverse_obj(details, ('sr', {int_or_none})),
-                        **traverse_obj(song, {
+                        **(traverse_obj(song, {
                             'ext': ('type', {str}),
                             'abr': ('br', {self.kilo_or_none}),
                             'filesize': ('size', {int_or_none}),
-                        }),
+                        }) if isinstance(song, dict) else {}),
                     })
-                elif err == 0:
+                elif err == 0 and isinstance(song, dict):
                     err = traverse_obj(song, ('code', {int})) or 0
 
         if not formats:
@@ -556,22 +562,23 @@ class NetEaseMusicProgramIE(NetEaseMusicBaseIE):
         metainfo = traverse_obj(info, {
             'title': ('name', {str}),
             'description': ('description', {str}),
-            'creator': ('dj', 'brand', {str}),
+            'creator': (('dj', 'brand'), {str}),
             'thumbnail': ('coverUrl', {url_or_none}),
             'timestamp': ('createTime', {self.kilo_or_none}),
         })
 
-        if not self._yes_playlist(info['songs'] and program_id, info['mainSong']['id']):
+        # Pass the actual songs list to _yes_playlist instead of combining with program_id
+        if not self._yes_playlist(info.get('songs'), info['mainSong']['id']):
             formats = self.extract_formats(info['mainSong'])
 
             return {
                 'id': str(info['mainSong']['id']),
                 'formats': formats,
-                'duration': traverse_obj(info, ('mainSong', 'duration', {self.kilo_or_none})),
+                'duration': traverse_obj(info, (('mainSong', 'duration'), {self.kilo_or_none})),
                 **metainfo,
             }
 
-        songs = traverse_obj(info, (('mainSong', ('songs', ...)),))
+        songs = traverse_obj(info, ('mainSong', 'songs', ...))
         return self.playlist_result(self._get_entries(songs), program_id, **metainfo)
 
 

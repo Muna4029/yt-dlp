@@ -3,7 +3,11 @@ import random
 import re
 
 from .common import InfoExtractor
-from .periscope import PeriscopeBaseIE, PeriscopeIE
+try:
+    from .periscope import PeriscopeBaseIE, PeriscopeIE
+except ImportError:  # optional extractor may be missing during package import
+    PeriscopeBaseIE = None
+    PeriscopeIE = None
 from ..compat import functools  # isort: split
 from ..compat import (
     compat_parse_qs,

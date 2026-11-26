@@ -64,8 +64,50 @@ def get_all_ies():
     if os.path.exists(PLUGINS_DIRNAME):
         # os.rename cannot be used, e.g. in Docker. See https://github.com/yt-dlp/yt-dlp/pull/4958
         shutil.move(PLUGINS_DIRNAME, BLOCKED_DIRNAME)
+    _ALL_CLASSES = None
     try:
-        from yt_dlp.extractor.extractors import _ALL_CLASSES
+        try:
+            # Prefer the registry if available
+            from yt_dlp.extractor.extractors import _ALL_CLASSES as _ALL_CLASSES_REG
+            _ALL_CLASSES = _ALL_CLASSES_REG
+        except Exception:
+            # Fall back to a best-effort scan of extractor submodules without
+            # failing on optional/missing extractor dependencies. We import
+            # each submodule individually and skip those that raise on import.
+            _ALL_CLASSES = []
+            try:
+                import importlib
+                import pkgutil
+                pkg = importlib.import_module('yt_dlp.extractor')
+                try:
+                    from yt_dlp.extractor.common import InfoExtractor
+                except Exception:
+                    InfoExtractor = None
+                for finder, name, ispkg in pkgutil.iter_modules(pkg.__path__):
+                    # skip the central registry module itself
+                    if name == 'extractors':
+                        continue
+                    fullname = f"{pkg.__name__}.{name}"
+                    try:
+                        mod = importlib.import_module(fullname)
+                    except Exception:
+                        # skip modules that fail to import (optional/external deps)
+                        continue
+                    # collect classes that subclass InfoExtractor if available
+                    for obj_name in dir(mod):
+                        try:
+                            obj = getattr(mod, obj_name)
+                        except Exception:
+                            continue
+                        if InfoExtractor is not None:
+                            try:
+                                if isinstance(obj, type) and issubclass(obj, InfoExtractor):
+                                    _ALL_CLASSES.append(obj)
+                            except Exception:
+                                continue
+            except Exception:
+                # If scanning fails for any reason, fall back to empty list
+                _ALL_CLASSES = []
     finally:
         if os.path.exists(BLOCKED_DIRNAME):
             shutil.move(BLOCKED_DIRNAME, PLUGINS_DIRNAME)

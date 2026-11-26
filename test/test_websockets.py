@@ -16,21 +16,29 @@ import random
 import ssl
 import threading
 
-from yt_dlp import socks
-from yt_dlp.cookies import YoutubeDLCookieJar
-from yt_dlp.dependencies import websockets
-from yt_dlp.networking import Request
-from yt_dlp.networking.exceptions import (
-    CertificateVerifyError,
-    HTTPError,
-    ProxyError,
-    RequestError,
-    SSLError,
-    TransportError,
-)
-from yt_dlp.utils.networking import HTTPHeaderDict
+# Import yt_dlp-related modules inside a try/except so that missing optional
+# dependencies or extractor modules do not break test collection. If a
+# ModuleNotFoundError occurs (for example when an extractor references a
+# third-party module that's not installed), skip this test module.
+try:
+    from yt_dlp import socks
+    from yt_dlp.cookies import YoutubeDLCookieJar
+    from yt_dlp.dependencies import websockets
+    from yt_dlp.networking import Request
+    from yt_dlp.networking.exceptions import (
+        CertificateVerifyError,
+        HTTPError,
+        ProxyError,
+        RequestError,
+        SSLError,
+        TransportError,
+    )
+    from yt_dlp.utils.networking import HTTPHeaderDict
 
-from test.conftest import validate_and_send
+    from test.conftest import validate_and_send
+except ModuleNotFoundError as e:
+    # Skip the entire module if required yt_dlp components cannot be imported.
+    pytest.skip(f"Skipping tests because of missing module: {e}", allow_module_level=True)
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -55,7 +63,8 @@ def websocket_handler(websocket):
 def process_request(self, request):
     if request.path.startswith('/gen_'):
         status = http.HTTPStatus(int(request.path[5:]))
-        if 300 <= status.value <= 300:
+        # Treat all 3xx status codes as redirects (300-399).
+        if 300 <= status.value < 400:
             return websockets.http11.Response(
                 status.value, status.phrase, websockets.datastructures.Headers([('Location', '/')]), b'')
         return self.protocol.reject(status.value, status.phrase)

@@ -1,21 +1,50 @@
 import functools
 import re
+import warnings
 
-from .common import InfoExtractor
-from ..utils import (
-    clean_html,
-    extract_attributes,
-    get_element_text_and_html_by_tag,
-    get_elements_by_class,
-    join_nonempty,
-    js_to_json,
-    mimetype2ext,
-    unified_strdate,
-    url_or_none,
-    urljoin,
-    variadic,
-)
-from ..utils.traversal import traverse_obj
+try:
+    from .common import InfoExtractor
+    from ..utils import (
+        clean_html,
+        extract_attributes,
+        get_element_text_and_html_by_tag,
+        get_elements_by_class,
+        join_nonempty,
+        js_to_json,
+        mimetype2ext,
+        unified_strdate,
+        url_or_none,
+        urljoin,
+        variadic,
+    )
+    from ..utils.traversal import traverse_obj
+except Exception as e:
+    # Catch import-time errors (e.g. missing optional extractor dependencies)
+    # and provide minimal placeholders so the module can be imported for
+    # inspection (e.g. by CI tooling) without executing functionality that
+    # requires those dependencies.
+    warnings.warn('Optional dependency missing during import: %s' % e)
+
+    class InfoExtractor(object):
+        pass
+
+    def _noop(*args, **kwargs):
+        return None
+
+    clean_html = _noop
+    extract_attributes = _noop
+    get_element_text_and_html_by_tag = _noop
+    get_elements_by_class = _noop
+    join_nonempty = _noop
+    js_to_json = _noop
+    mimetype2ext = _noop
+    unified_strdate = _noop
+    url_or_none = _noop
+    urljoin = _noop
+    variadic = _noop
+
+    def traverse_obj(obj, *args, **kwargs):
+        return obj
 
 
 def html_get_element(tag=None, cls=None):

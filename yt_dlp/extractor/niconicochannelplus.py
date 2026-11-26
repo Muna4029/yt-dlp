@@ -2,17 +2,32 @@ import functools
 import json
 
 from .common import InfoExtractor
-from ..utils import (
-    ExtractorError,
-    OnDemandPagedList,
-    filter_dict,
-    int_or_none,
-    parse_qs,
-    str_or_none,
-    traverse_obj,
-    unified_timestamp,
-    url_or_none,
-)
+try:
+    from ..utils import (
+        ExtractorError,
+        OnDemandPagedList,
+        filter_dict,
+        int_or_none,
+        parse_qs,
+        str_or_none,
+        traverse_obj,
+        unified_timestamp,
+        url_or_none,
+    )
+except Exception:
+    # Fallback to absolute import path for environments where package
+    # relative imports may not resolve (e.g. certain test or tooling setups).
+    from yt_dlp.utils import (
+        ExtractorError,
+        OnDemandPagedList,
+        filter_dict,
+        int_or_none,
+        parse_qs,
+        str_or_none,
+        traverse_obj,
+        unified_timestamp,
+        url_or_none,
+    )
 
 
 class NiconicoChannelPlusBaseIE(InfoExtractor):
